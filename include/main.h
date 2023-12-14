@@ -6,6 +6,7 @@
 #define ESP32_ROBOCAR_FW_MAIN_H
 
 #include "FastLED.h"
+#include "Color.h"
 
 #define LED_BUILTIN 21
 #define BTN_BUILTIN 0
@@ -22,13 +23,6 @@
 #define PIN_ESP32_RES3 8
 #define PIN_ESP32_STATE_LED 10
 
-typedef struct _color_t {
-  uint8_t red;
-  uint8_t green;
-  uint8_t blue;
-  uint8_t brightness;
-} color_t;
-
 extern "C" {
 #ifdef __GNUC__
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
@@ -41,7 +35,7 @@ void IRAM_ATTR ISR();
 void reset();
 void error_handler();
 
-void set_led(CRGB* led, color_t color);
+void set_led(CRGB* led, RGBA color);
 
 void serial_rx_handler();
 void serial_tx_putc(uint8_t *data, uint16_t len);

@@ -5,20 +5,27 @@
 #include <iostream>
 #include "types.h"
 #include <electricui.h>
-#include "FastLED.h"
 
 CRGB state_led;
 
 // EUI packages
-char nickname[15] = "ESP32 UART/USB";
-typedef struct {
-  uint8_t mac[6];
-  uint8_t ip[4];
-} boardinformation_t;
+char nickname[8] = "Robocar";
 
-boardinformation_t boardinformation;
+enum class Path: uint8_t {
+  HOME = 0,
+  SENSORS,
+  SETTINGS,
+  INFO,
+};
+
+class Gui {
+public:
+  Path path{Path::HOME};
+  Path path_old{Path::HOME};
+};
 
 robocar_data_t data;
+Gui gui;
 // SPI instance for stm32 communication
 ESP32DMASPI::Master spi_master;
 // allocate memory for dma buffer and start dma slave with custom configuration
@@ -40,13 +47,15 @@ eui_message_t tracked_variables[] = {
         EUI_CUSTOM_RO("data", data.data),
         EUI_CUSTOM("parameter", data.parameter),
         EUI_CUSTOM_RO("state", data.state),
-        EUI_CUSTOM("board", boardinformation),
+        EUI_CUSTOM("gui", gui),
 };
+
+unsigned long timer_board_msg;
 
 void setup() {
   // Initialise builtin led and early life sign for debugging purpose
   CFastLED::addLeds<WS2812, PIN_ESP32_STATE_LED, GRB>(&state_led, 1);
-  set_led(&state_led, {.red = 0, .green = 0, .blue = 255, .brightness = 5});
+  set_led(&state_led, {0,0,255,5});
 
   delay(100);
   // Initialise Serialport for debugging
@@ -82,39 +91,90 @@ void setup() {
   EUI_TRACK(tracked_variables);
   eui_setup_identifier("esp32", 6);
 
-  std::cout << "Attaching interrupt" << std::endl;
-  attachInterrupt(BTN_BUILTIN, ISR, RISING);
-
-  set_led(&state_led, {.red = 0, .green = 255, .blue = 0, .brightness = 5});
+  set_led(&state_led, {0,255,0,5});
   digitalWrite(PIN_ESP32_OK, HIGH);
   std::cout << "Initialisation done." << std::endl;
+  timer_board_msg = millis();
 }
 
 void loop() {
   //check for new inbound data
   serial_rx_handler();
 
+  switch (gui.path) {
+    case Path::HOME:
+      master.exchange({.state = Comms::AccessRequestTypes::GET,
+                       .sensor = Comms::AccessRequestTypes::GET,
+                       .data = Comms::AccessRequestTypes::GET,
+                       .parameter = Comms::AccessRequestTypes::GET,
+                       .request = Comms::AccessRequestTypes::SET});
+      break;
+
+    case Path::SENSORS:
+      master.exchange({.state = Comms::AccessRequestTypes::GET,
+                              .sensor = Comms::AccessRequestTypes::GET,
+                              .data = Comms::AccessRequestTypes::GET,
+                              .parameter = Comms::AccessRequestTypes::IGNORE,
+                              .request = Comms::AccessRequestTypes::SET});
+      break;
+
+    case Path::SETTINGS:
+      if (gui.path_old != Path::SETTINGS) {
+        master.exchange({.state = Comms::AccessRequestTypes::GET,
+                                .sensor = Comms::AccessRequestTypes::GET,
+                                .data = Comms::AccessRequestTypes::GET,
+                                .parameter = Comms::AccessRequestTypes::GET,
+                                .request = Comms::AccessRequestTypes::SET});
+        eui_send_tracked("parameter");
+      } else if (data.request.safe_parameter)
+        master.exchange({.state = Comms::AccessRequestTypes::GET,
+                                .sensor = Comms::AccessRequestTypes::GET,
+                                .data = Comms::AccessRequestTypes::GET,
+                                .parameter = Comms::AccessRequestTypes::SET,
+                                .request = Comms::AccessRequestTypes::SET});
+      else
+        master.exchange({.state = Comms::AccessRequestTypes::GET,
+                                .sensor = Comms::AccessRequestTypes::GET,
+                                .data = Comms::AccessRequestTypes::GET,
+                                .parameter = Comms::AccessRequestTypes::IGNORE,
+                                .request = Comms::AccessRequestTypes::SET});
+      break;
+
+    case Path::INFO:
+      master.exchange({.state = Comms::AccessRequestTypes::GET,
+                              .sensor = Comms::AccessRequestTypes::GET,
+                              .data = Comms::AccessRequestTypes::GET,
+                              .parameter = Comms::AccessRequestTypes::IGNORE,
+                              .request = Comms::AccessRequestTypes::SET});
+      break;
+  }
+
   // send realtime data to the parser for use on the interface
   eui_send_tracked("sensor");
   eui_send_tracked("data");
-  eui_send_tracked("board");
+  eui_send_tracked("state");
 
-  master.exchange({.state = Comms::AccessRequestTypes::IGNORE,
-                   .sensor = Comms::AccessRequestTypes::GET,
-                   .data = Comms::AccessRequestTypes::GET,
-                   .parameter = Comms::AccessRequestTypes::GET,
-                   .request = Comms::AccessRequestTypes::SET});
+  if (data.request.reset_odomety and data.data.position.x == 0 and data.data.position.y == 0) {
+    data.request.reset_odomety = 0;
+    eui_send_tracked("request");
+  }
+
+  if (data.request.calibrate_imu and data.state.imu == State::Imu::CALIBRATING) {
+    data.request.calibrate_imu = 0;
+    eui_send_tracked("request");
+  }
 
   // Send this data is only sent when the gui is on the right page
+  if (millis() - timer_board_msg > 2000) {
+    //eui_send_tracked("board");
+    timer_board_msg = millis();
+  }
 
-}
-
-void IRAM_ATTR ISR() {
-  reset();
+  gui.path_old = gui.path;
 }
 
 void inline reset() {
-  set_led(&state_led, {.red = 255, .green = 0, .blue = 0, .brightness = 5});
+  set_led(&state_led, {255,0,0,5});
   std::cout << "Device is resetting..." << std::endl;
   delay(100);
   ESP.restart();
@@ -124,7 +184,7 @@ void error_handler() {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
   std::cout << "ESP32 is in ERROR-state..." << std::endl;
-  set_led(&state_led, {.red = 255, .green = 0, .blue = 255, .brightness = 5});
+  set_led(&state_led, {255,0,255,5});
   digitalWrite(PIN_ESP32_ERROR, HIGH);
   while (true) {
     std::cout << "Waiting for reset..." << std::endl;
@@ -140,11 +200,11 @@ PUTCHAR_PROTOTYPE {
 }
 }
 
-void inline set_led(CRGB* led, color_t color) {
+void inline set_led(CRGB* led, RGBA color) {
   led->red = color.red;
   led->green = color.green;
   led->blue = color.blue;
-  led->maximizeBrightness(ceil(2.5f*color.brightness));
+  led->maximizeBrightness(color.alpha);
   FastLED.show();
 }
 
