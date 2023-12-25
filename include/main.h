@@ -35,7 +35,7 @@ void IRAM_ATTR ISR();
 void reset();
 void error_handler();
 
-void set_led(CRGB* led, RGBA color);
+void set_led(CRGB &led, RGBA color);
 
 void serial_rx_handler();
 void serial_tx_putc(uint8_t *data, uint16_t len);

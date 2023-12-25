@@ -55,7 +55,7 @@ unsigned long timer_board_msg;
 void setup() {
   // Initialise builtin led and early life sign for debugging purpose
   CFastLED::addLeds<WS2812, PIN_ESP32_STATE_LED, GRB>(&state_led, 1);
-  set_led(&state_led, {0,0,255,5});
+  set_led(state_led, {0,0,255,5});
 
   delay(100);
   // Initialise Serialport for debugging
@@ -73,7 +73,7 @@ void setup() {
   // Initialise spi port to communicate with stm32 main processor
   std::cout << "Initialise spi port..." << std::endl;
   spi_master.setSpiMode(SPI_MODE0);
-  spi_master.setFrequency(50000000);
+  spi_master.setFrequency(45000000);
   spi_master.setMaxTransferSize(sizeof(Comms::Comms::comms_packet_t));
   spi_master.begin(HSPI, HSPI_CLK, HSPI_MISO, HSPI_MOSI, HSPI_CS);
   // clear the dma buffer
@@ -91,7 +91,7 @@ void setup() {
   EUI_TRACK(tracked_variables);
   eui_setup_identifier("esp32", 6);
 
-  set_led(&state_led, {0,255,0,5});
+  set_led(state_led, {0,255,0,5});
   digitalWrite(PIN_ESP32_OK, HIGH);
   std::cout << "Initialisation done." << std::endl;
   timer_board_msg = millis();
@@ -165,8 +165,12 @@ void loop() {
   }
 
   // Send this data is only sent when the gui is on the right page
-  if (millis() - timer_board_msg > 2000) {
+  if (millis() - timer_board_msg > 500) {
     //eui_send_tracked("board");
+    if (state_led.r > 0)
+      set_led(state_led, {0,255,0,5});
+    else
+      set_led(state_led, {255,255,0,5});
     timer_board_msg = millis();
   }
 
@@ -174,7 +178,7 @@ void loop() {
 }
 
 void inline reset() {
-  set_led(&state_led, {255,0,0,5});
+  set_led(state_led, {255,0,0,5});
   std::cout << "Device is resetting..." << std::endl;
   delay(100);
   ESP.restart();
@@ -184,7 +188,7 @@ void error_handler() {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
   std::cout << "ESP32 is in ERROR-state..." << std::endl;
-  set_led(&state_led, {255,0,255,5});
+  set_led(state_led, {255,0,255,5});
   digitalWrite(PIN_ESP32_ERROR, HIGH);
   while (true) {
     std::cout << "Waiting for reset..." << std::endl;
@@ -200,11 +204,11 @@ PUTCHAR_PROTOTYPE {
 }
 }
 
-void inline set_led(CRGB* led, RGBA color) {
-  led->red = color.red;
-  led->green = color.green;
-  led->blue = color.blue;
-  led->maximizeBrightness(color.alpha);
+void inline set_led(CRGB &led, RGBA color) {
+  led.red = color.red;
+  led.green = color.green;
+  led.blue = color.blue;
+  led.maximizeBrightness(color.alpha);
   FastLED.show();
 }
 
