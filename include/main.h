@@ -31,13 +31,26 @@ extern "C" {
 #endif
 }
 
+/// @brief Interrupt to detect a reset request from the builtin button
 void IRAM_ATTR ISR();
+
+/// @brief Reset this microcontroller
 void reset();
+
+/// @brief Error handler, called when the system is in unstable state
 void error_handler();
 
-void set_led(CRGB &led, RGBA color);
+/// @brief Set the color of the Neopixel
+/// @param[in,out] led The Object of the Neopixel which needs to be changed.
+/// @param[in] color The desired color in RGBA space.
+void set_led(CRGB &led, const RGBA color);
 
+/// @brief Handler to handle serial receive commands
 void serial_rx_handler();
-void serial_tx_putc(uint8_t *data, uint16_t len);
+
+/// @brief Handler to write to the serial port
+/// @param[in] data The data which needs to be sent
+/// @param[in] len The length of the data
+void serial_tx_putc(uint8_t *data, uint16_t length);
 
 #endif //ESP32_ROBOCAR_FW_MAIN_H

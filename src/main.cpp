@@ -103,49 +103,49 @@ void loop() {
 
   switch (gui.path) {
     case Path::HOME:
-      master.exchange({.state = Comms::AccessRequestTypes::GET,
-                       .sensor = Comms::AccessRequestTypes::GET,
-                       .data = Comms::AccessRequestTypes::GET,
-                       .parameter = Comms::AccessRequestTypes::GET,
-                       .request = Comms::AccessRequestTypes::SET});
+      master.exchange({.state = Comms::AccessRequestType::GET,
+                       .sensor = Comms::AccessRequestType::GET,
+                       .data = Comms::AccessRequestType::GET,
+                       .parameter = Comms::AccessRequestType::GET,
+                       .request = Comms::AccessRequestType::SET});
       break;
 
     case Path::SENSORS:
-      master.exchange({.state = Comms::AccessRequestTypes::GET,
-                              .sensor = Comms::AccessRequestTypes::GET,
-                              .data = Comms::AccessRequestTypes::GET,
-                              .parameter = Comms::AccessRequestTypes::IGNORE,
-                              .request = Comms::AccessRequestTypes::SET});
+      master.exchange({.state = Comms::AccessRequestType::GET,
+                              .sensor = Comms::AccessRequestType::GET,
+                              .data = Comms::AccessRequestType::GET,
+                              .parameter = Comms::AccessRequestType::IGNORE,
+                              .request = Comms::AccessRequestType::SET});
       break;
 
     case Path::SETTINGS:
       if (gui.path_old != Path::SETTINGS) {
-        master.exchange({.state = Comms::AccessRequestTypes::GET,
-                                .sensor = Comms::AccessRequestTypes::GET,
-                                .data = Comms::AccessRequestTypes::GET,
-                                .parameter = Comms::AccessRequestTypes::GET,
-                                .request = Comms::AccessRequestTypes::SET});
+        master.exchange({.state = Comms::AccessRequestType::GET,
+                                .sensor = Comms::AccessRequestType::GET,
+                                .data = Comms::AccessRequestType::GET,
+                                .parameter = Comms::AccessRequestType::GET,
+                                .request = Comms::AccessRequestType::SET});
         eui_send_tracked("parameter");
       } else if (data.request.safe_parameter)
-        master.exchange({.state = Comms::AccessRequestTypes::GET,
-                                .sensor = Comms::AccessRequestTypes::GET,
-                                .data = Comms::AccessRequestTypes::GET,
-                                .parameter = Comms::AccessRequestTypes::SET,
-                                .request = Comms::AccessRequestTypes::SET});
+        master.exchange({.state = Comms::AccessRequestType::GET,
+                                .sensor = Comms::AccessRequestType::GET,
+                                .data = Comms::AccessRequestType::GET,
+                                .parameter = Comms::AccessRequestType::SET,
+                                .request = Comms::AccessRequestType::SET});
       else
-        master.exchange({.state = Comms::AccessRequestTypes::GET,
-                                .sensor = Comms::AccessRequestTypes::GET,
-                                .data = Comms::AccessRequestTypes::GET,
-                                .parameter = Comms::AccessRequestTypes::IGNORE,
-                                .request = Comms::AccessRequestTypes::SET});
+        master.exchange({.state = Comms::AccessRequestType::GET,
+                                .sensor = Comms::AccessRequestType::GET,
+                                .data = Comms::AccessRequestType::GET,
+                                .parameter = Comms::AccessRequestType::IGNORE,
+                                .request = Comms::AccessRequestType::SET});
       break;
 
     case Path::INFO:
-      master.exchange({.state = Comms::AccessRequestTypes::GET,
-                              .sensor = Comms::AccessRequestTypes::GET,
-                              .data = Comms::AccessRequestTypes::GET,
-                              .parameter = Comms::AccessRequestTypes::IGNORE,
-                              .request = Comms::AccessRequestTypes::SET});
+      master.exchange({.state = Comms::AccessRequestType::GET,
+                              .sensor = Comms::AccessRequestType::GET,
+                              .data = Comms::AccessRequestType::GET,
+                              .parameter = Comms::AccessRequestType::IGNORE,
+                              .request = Comms::AccessRequestType::SET});
       break;
   }
 
@@ -204,7 +204,7 @@ PUTCHAR_PROTOTYPE {
 }
 }
 
-void inline set_led(CRGB &led, RGBA color) {
+void inline set_led(CRGB &led, const RGBA color) {
   led.red = color.red;
   led.green = color.green;
   led.blue = color.blue;
